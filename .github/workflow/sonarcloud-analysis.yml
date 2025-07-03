@@ -1,0 +1,47 @@
+name: .NET Framework SonarCloud Analysis
+
+on:
+  push:
+    branches:
+      - main # main 브랜치에 푸시될 때 워크플로우 실행
+  pull_request:
+    branches:
+      - main # main 브랜치로 PR이 생성/업데이트될 때 워크플로우 실행
+
+jobs:
+  build-and-analyze:
+    name: Build and Analyze .NET Framework Web App
+    runs-on: windows-latest # .NET Framework 빌드를 위해 Windows 러너 사용
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Pull Request Decoration을 위해 전체 Git 히스토리 가져오기
+
+    - name: Setup MSBuild (Visual Studio Build Tools)
+      uses: microsoft/setup-msbuild@v2
+      with:
+        msbuild-version: '17.0' # ?? 변경 필요: Visual Studio 2022 사용 시 '17.0' (다른 버전이면 조정)
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+      with:
+        nuget-version: '6.x'
+
+    - name: Restore NuGet packages
+      run: nuget restore WebApp1.sln # ?? 변경 필요: 실제 솔루션 파일명으로 변경 (예: MyWebApp.sln)
+
+    - name: Build and Analyze with SonarCloud
+      uses: SonarSource/sonarcloud-github-action@master # SonarCloud 공식 GitHub Action 사용
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # SonarCloud가 PR에 주석을 달 수 있도록 GitHub 토큰 필요
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # SonarCloud 분석 토큰
+      with:
+        # ?? 변경 필요: 아래 projectKey와 organization을 SonarCloud에서 생성한 정보로 변경
+        projectKey: joosj65-gmail_MyAspNetWebApp1 # 예: your-github-username_my-aspnet-webapp
+        organization: joosj65-gmail # 예: your-github-username
+        args: > # SonarScanner for MSBuild에 전달할 추가 인자
+          /d:sonar.cs.msbuild.projectFilePath="WebApp1/WebApp1.csproj" # ?? 변경 필요: 웹 앱의 .csproj 파일 경로 (예: MyWebApp/MyWebApp.csproj)
+          /p:Configuration=Release # MSBuild 빌드 시 사용할 구성 (선택 사항)
+          /p:RestorePackages=false # NuGet restore는 이미 위에서 했으므로 다시 실행하지 않음
